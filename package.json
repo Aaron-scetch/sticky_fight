@@ -1,3 +1,7 @@
-"scripts": {
-  "start": "node server.js"
+{
+  "name": "stichy_fight",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "node server.js"
+  }
 }
