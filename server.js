@@ -44,7 +44,7 @@ io.on("connection", (socket) => {
       id: lobbyId,
       players: {}
     };
-
+    leaveLobby(socket);
     joinLobby(socket, lobbyId);
   });
 
@@ -55,6 +55,7 @@ io.on("connection", (socket) => {
     if (!lobbies[lobbyId]) return;
     if (Object.keys(lobbies[lobbyId].players).length >= MAX_PLAYERS) return;
 
+    leaveLobby(socket);
     joinLobby(socket, lobbyId);
   });
 
@@ -106,12 +107,9 @@ function joinLobby(socket, lobbyId) {
   socket.lobbyId = lobbyId;
 
   lobbies[lobbyId].players[socket.id] = {
-    id: socket.id,
-    x: 100 + Math.random() * 200,
-    y: 100 + Math.random() * 200,
-    hp: 100
+    id: socket.id
   };
-
+  
   io.to(lobbyId).emit("lobby_update", lobbies[lobbyId]);
 }
 
