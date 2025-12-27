@@ -13,11 +13,6 @@ const io = new Server(server, {
 let players = {};
 
 io.on("connection", socket => {
-
-  players[socket.id] = {
-    id: socket.id,
-  };
-
   socket.on("state_update", (state) => {
     players[socket.id] = {
       ...players[socket.id],
