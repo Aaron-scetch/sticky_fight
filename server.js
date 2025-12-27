@@ -10,39 +10,32 @@ const io = new Server(server, {
 });
 
 // 🔑 Zentrale Datenstruktur
-let players = [];
+let players = {};
 
-io.on("connection", (socket) => {
-  console.log("Spieler verbunden:", socket.id);
+io.on("connection", socket => {
 
-  // 🟢 Spieler anlegen
-  players.push({
-    playerId: socket.id,
-    data: {}
+  players[socket.id] = {
+    id: socket.id,
+    x: 0, y: 0, hp: 100
+  };
+
+  socket.on("state_update", (state) => {
+    players[socket.id] = {
+      ...players[socket.id],
+      ...state
+    };
   });
 
-  // 🔄 aktuelle Liste an alle senden
-  io.emit("sync_players", players);
-
-  // 📥 Daten vom Spieler empfangen
-  socket.on("player_update", (playerData) => {
-    const player = players.find(p => p.playerId === socket.id);
-    if (player) {
-      player.data = playerData;
-    }
-
-    // 🔄 Update an alle schicken
-    io.emit("sync_players", players);
-  });
-
-  // 🔴 Spieler entfernen
   socket.on("disconnect", () => {
-    console.log("Spieler getrennt:", socket.id);
-    players = players.filter(p => p.playerId !== socket.id);
-
-    io.emit("sync_players", players);
+    delete players[socket.id];
   });
 });
+
+const BROADCAST_RATE = 15;
+
+setInterval(() => {
+  io.emit("world_state", players);
+}, 1000 / BROADCAST_RATE);
 
 server.listen(process.env.PORT || 10000, () => {
   console.log("Server läuft");
