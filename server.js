@@ -6,30 +6,44 @@ const app = express();
 const server = http.createServer(app);
 
 const io = new Server(server, {
-  cors: {
-    origin: "*", // für TEST ok
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*" }
 });
+
+// 🔑 Zentrale Datenstruktur
+let players = [];
 
 io.on("connection", (socket) => {
-  console.log("Client verbunden:", socket.id);
+  console.log("Spieler verbunden:", socket.id);
 
-  socket.on("test_message", (data) => {
-    console.log("Nachricht erhalten:", data);
-
-    socket.emit("test_response", {
-      msg: "Hallo von Render.com 👋",
-      time: new Date()
-    });
+  // 🟢 Spieler anlegen
+  players.push({
+    playerId: socket.id,
+    data: {}
   });
 
+  // 🔄 aktuelle Liste an alle senden
+  io.emit("sync_players", players);
+
+  // 📥 Daten vom Spieler empfangen
+  socket.on("player_update", (playerData) => {
+    const player = players.find(p => p.playerId === socket.id);
+    if (player) {
+      player.data = playerData;
+    }
+
+    // 🔄 Update an alle schicken
+    io.emit("sync_players", players);
+  });
+
+  // 🔴 Spieler entfernen
   socket.on("disconnect", () => {
-    console.log("Client getrennt");
+    console.log("Spieler getrennt:", socket.id);
+    players = players.filter(p => p.playerId !== socket.id);
+
+    io.emit("sync_players", players);
   });
 });
 
-const PORT = process.env.PORT || 10000;
-server.listen(PORT, () => {
-  console.log("Server läuft auf Port", PORT);
+server.listen(process.env.PORT || 10000, () => {
+  console.log("Server läuft");
 });
