@@ -1,5 +1,5 @@
 {
-  "name": "socket-io-render-test",
+  "name": "sticky_fight",
   "version": "1.0.0",
   "description": "Node.js Socket.IO Server für Render",
   "main": "server.js",
