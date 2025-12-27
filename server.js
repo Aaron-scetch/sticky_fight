@@ -16,7 +16,6 @@ io.on("connection", socket => {
 
   players[socket.id] = {
     id: socket.id,
-    x: 0, y: 0, hp: 100
   };
 
   socket.on("state_update", (state) => {
