@@ -4,78 +4,105 @@ const { Server } = require("socket.io");
 
 const app = express();
 const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: "*" } });
 
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-/*
-  LOBBY STRUKTUR
-  lobbies = {
-    lobbyId: {
-      id: string,
-      players: {
-        socketId: {
-          id, x, y, hp
-        }
-      }
-    }
-  }
-*/
-const lobbies = {};
+// =======================
+// KONSTANTEN
+// =======================
 const MAX_PLAYERS = 10;
-const BROADCAST_RATE = 15;
+const DEFAULT_MAP = "standard";
+
+// =======================
+// LISTEN
+// =======================
+const lobbies = {};        // Liste 1
+const publicLobbies = {};  // Liste 2
+const attacks = {};        // Liste 3
+
+// =======================
+// SERVER STATUS
+// =======================
+let serverReady = false;
+
+// Server "wacht auf"
+setTimeout(() => {
+  serverReady = true;
+  console.log("Server ist wach");
+}, 2000);
 
 // =======================
 // SOCKET HANDLING
 // =======================
-io.on("connection", (socket) => {
-  console.log("Verbunden:", socket.id);
+io.on("connection", socket => {
+  console.log("Client:", socket.id);
 
   // -----------------------
-  // LOBBY ERSTELLEN
+  // SERVER STATUS
   // -----------------------
-  socket.on("create_lobby", () => {
-    const lobbyId = generateLobbyId();
-    lobbies[lobbyId] = {
-      id: lobbyId,
-      players: {}
-    };
-    leaveLobby(socket);
-    joinLobby(socket, lobbyId);
+  socket.emit("server_status", {
+    ready: serverReady,
+    full: Object.keys(getAllPlayers()).length >= MAX_PLAYERS
   });
 
   // -----------------------
-  // LOBBY BEITRETEN
+  // NAME SETZEN + START
   // -----------------------
-  socket.on("join_lobby", (lobbyId) => {
+  socket.on("set_name", name => {
+    if (!serverReady) return;
+    if (Object.keys(getAllPlayers()).length >= MAX_PLAYERS) {
+      socket.emit("server_full");
+      return;
+    }
+
+    createAndJoinLobby(socket, name);
+  });
+
+  // -----------------------
+  // READY TOGGLE
+  // -----------------------
+  socket.on("toggle_ready", () => {
+    const lobby = lobbies[socket.lobbyId];
+    if (!lobby) return;
+
+    const p = publicLobbies[socket.lobbyId].players[socket.id];
+    p.ready = !p.ready;
+
+    syncPublicLobbies();
+  });
+
+  // -----------------------
+  // MAP SETZEN
+  // -----------------------
+  socket.on("set_map", map => {
+    const lobby = lobbies[socket.lobbyId];
+    if (!lobby) return;
+
+    lobby.map = map;
+    syncLobby(socket.lobbyId);
+  });
+
+  // -----------------------
+  // SKIN SETZEN
+  // -----------------------
+  socket.on("set_skin", skin => {
+    const lobby = lobbies[socket.lobbyId];
+    if (!lobby) return;
+
+    lobby.players[socket.id].skin = skin;
+  });
+
+  // -----------------------
+  // LOBBY WECHSEL
+  // -----------------------
+  socket.on("join_lobby", lobbyId => {
     if (!lobbies[lobbyId]) return;
-    if (Object.keys(lobbies[lobbyId].players).length >= MAX_PLAYERS) return;
-
     leaveLobby(socket);
     joinLobby(socket, lobbyId);
   });
 
-  // -----------------------
-  // STATE UPDATE VOM CLIENT
-  // -----------------------
-  socket.on("state_update", (state) => {
-    const lobbyId = socket.lobbyId;
-    if (!lobbyId) return;
-
-    const player = lobbies[lobbyId]?.players[socket.id];
-    if (!player) return;
-
-    // einfache Plausibilitätschecks
-    if (Math.abs(state.x - player.x) > 100) return;
-    if (Math.abs(state.y - player.y) > 100) return;
-
-    player.x = state.x;
-    player.y = state.y;
-    player.hp = state.hp;
+  socket.on("new_empty_lobby", () => {
+    leaveLobby(socket);
+    createAndJoinLobby(socket, getPlayerName(socket));
   });
 
   // -----------------------
@@ -83,57 +110,112 @@ io.on("connection", (socket) => {
   // -----------------------
   socket.on("disconnect", () => {
     leaveLobby(socket);
-    console.log("Getrennt:", socket.id);
   });
 });
 
 // =======================
-// BROADCAST TICK (LOBBY-WEISE)
+// LOBBY FUNKTIONEN
 // =======================
-setInterval(() => {
-  for (const lobbyId in lobbies) {
-    const lobby = lobbies[lobbyId];
-    io.to(lobbyId).emit("world_state", lobby.players);
-  }
-}, 1000 / BROADCAST_RATE);
+function createAndJoinLobby(socket, name) {
+  const lobbyId = generateId();
 
-// =======================
-// HILFSFUNKTIONEN
-// =======================
-function joinLobby(socket, lobbyId) {
-  leaveLobby(socket);
+  lobbies[lobbyId] = {
+    id: lobbyId,
+    status: "menu",
+    time: 0,
+    map: DEFAULT_MAP,
+    players: {}
+  };
 
+  publicLobbies[lobbyId] = {
+    id: lobbyId,
+    players: {}
+  };
+
+  attacks[lobbyId] = {};
+
+  joinLobby(socket, lobbyId, name);
+}
+
+function joinLobby(socket, lobbyId, name) {
   socket.join(lobbyId);
   socket.lobbyId = lobbyId;
 
   lobbies[lobbyId].players[socket.id] = {
-    id: socket.id
+    id: socket.id,
+    name,
+    x: 0,
+    y: 0,
+    skin: "default",
+    img: "",
+    health: 100
   };
-  
-  io.to(lobbyId).emit("lobby_update", lobbies[lobbyId]);
+
+  publicLobbies[lobbyId].players[socket.id] = {
+    id: socket.id,
+    name,
+    ready: false
+  };
+
+  syncLobby(lobbyId);
+  syncPublicLobbies();
 }
 
 function leaveLobby(socket) {
   const lobbyId = socket.lobbyId;
-  if (!lobbyId || !lobbies[lobbyId]) return;
+  if (!lobbyId) return;
+
+  delete lobbies[lobbyId].players[socket.id];
+  delete publicLobbies[lobbyId].players[socket.id];
 
   socket.leave(lobbyId);
-  delete lobbies[lobbyId].players[socket.id];
+  socket.lobbyId = null;
 
   if (Object.keys(lobbies[lobbyId].players).length === 0) {
     delete lobbies[lobbyId];
-  } else {
-    io.to(lobbyId).emit("lobby_update", lobbies[lobbyId]);
+    delete publicLobbies[lobbyId];
+    delete attacks[lobbyId];
   }
 
-  socket.lobbyId = null;
-}
-
-function generateLobbyId() {
-  return Math.random().toString(36).substr(2, 5);
+  syncPublicLobbies();
 }
 
 // =======================
-server.listen(process.env.PORT || 10000, () => {
-  console.log("Server läuft");
+// SYNC
+// =======================
+function syncLobby(lobbyId) {
+  io.to(lobbyId).emit("lobby_data", lobbies[lobbyId]);
+}
+
+function syncPublicLobbies() {
+  io.emit("public_lobbies", publicLobbies);
+}
+
+// =======================
+// HILFSFUNKTIONEN
+// =======================
+function getAllPlayers() {
+  const all = {};
+  for (const l in publicLobbies) {
+    Object.assign(all, publicLobbies[l].players);
+  }
+  return all;
+}
+
+function getPlayerName(socket) {
+  for (const l in lobbies) {
+    if (lobbies[l].players[socket.id]) {
+      return lobbies[l].players[socket.id].name;
+    }
+  }
+  return "Player";
+}
+
+function generateId() {
+  return Math.random().toString(36).substr(2, 6);
+}
+
+// =======================
+server.listen(10000, () => {
+  console.log("Server läuft auf 10000");
 });
