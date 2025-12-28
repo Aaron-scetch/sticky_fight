@@ -138,6 +138,7 @@ function createAndJoinLobby(socket, name) {
 
   publicLobbies[lobbyId] = {
     id: lobbyId,
+    status: "menu",
     players: {}
   };
 
