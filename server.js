@@ -78,6 +78,17 @@ io.on("connection", socket => {
   });
 
   // -----------------------
+  // VISIBLE TOGGLE
+  // -----------------------
+  socket.on("toggle_visible", () => {
+    const lobby = lobbies[socket.lobbyId];
+    if (!lobby) return;
+
+    lobby.players[socket.id].visible = !lobby.players[socket.id].visible;
+    syncLobby(socket.lobbyId);
+  });
+
+  // -----------------------
   // MAP SETZEN
   // -----------------------
   socket.on("set_map", map => {
@@ -96,6 +107,7 @@ io.on("connection", socket => {
     if (!lobby) return;
 
     lobby.players[socket.id].skin = skin;
+    syncLobby(socket.lobbyId);
   });
 
   // -----------------------
@@ -112,6 +124,27 @@ io.on("connection", socket => {
   socket.on("new_empty_lobby", () => {
     leaveLobby(socket);
     createAndJoinLobby(socket, getPlayerName(socket));
+  });
+
+  // -----------------------
+  // PLAYER SENDET DATEN
+  // -----------------------
+  socket.on("player_state", data => {
+    const lobbyId = socket.lobbyId;
+    if (!lobbyId) return;
+
+    const lobby = lobbies[lobbyId];
+    if (!lobby) return;
+
+    if (lobby.status === "menu") return;
+
+    const player = lobby.players[socket.id];
+    if (!player) return;
+
+    player.x = data.x;
+    player.y = data.y;
+    player.health = data.health;
+    player.img = data.img;
   });
 
   // -----------------------
@@ -156,9 +189,10 @@ function joinLobby(socket, lobbyId) {
     name: socket.playerName,
     x: 0,
     y: 0,
-    skin: "default",
-    img: "",
-    health: 100
+    skin: "Stickman",
+    img: "Stickman.png",
+    health: 10,
+    visible: true
   };
 
   publicLobbies[lobbyId].players[socket.id] = {
@@ -229,3 +263,28 @@ function generateId() {
 server.listen(10000, () => {
   console.log("Server läuft auf 10000");
 });
+
+const SYNC_RATE = 20;
+
+setInterval(() => {
+  for (const lobbyId in lobbies) {
+    const lobby = lobbies[lobbyId];
+
+    if (lobby.status === "menu") continue;
+
+    const syncPlayers = {};
+
+    for (const pid in lobby.players) {
+      const p = lobby.players[pid];
+      syncPlayers[pid] = {
+        id: p.id,
+        img: p.img,
+        x: p.x,
+        y: p.y,
+        health: p.health
+      };
+    }
+
+    io.to(lobbyId).emit("game_state", syncPlayers);
+  }
+}, 1000 / SYNC_RATE);
