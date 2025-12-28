@@ -59,6 +59,7 @@ io.on("connection", socket => {
       socket.emit("server_full");
       return;
     }
+    socket.playerName = name;
 
     createAndJoinLobby(socket, name);
   });
@@ -143,13 +144,13 @@ function createAndJoinLobby(socket, name) {
   joinLobby(socket, lobbyId, name);
 }
 
-function joinLobby(socket, lobbyId, name) {
+function joinLobby(socket, lobbyId) {
   socket.join(lobbyId);
   socket.lobbyId = lobbyId;
 
   lobbies[lobbyId].players[socket.id] = {
     id: socket.id,
-    name,
+    name: socket.playerName,
     x: 0,
     y: 0,
     skin: "default",
@@ -159,7 +160,7 @@ function joinLobby(socket, lobbyId, name) {
 
   publicLobbies[lobbyId].players[socket.id] = {
     id: socket.id,
-    name,
+    name: socket.playerName,
     ready: false
   };
 
