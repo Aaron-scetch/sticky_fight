@@ -103,6 +103,8 @@ io.on("connection", socket => {
   // -----------------------
   socket.on("join_lobby", lobbyId => {
     if (!lobbies[lobbyId]) return;
+    if (Object.keys(lobby.players).length >= 4) return;
+
     leaveLobby(socket);
     joinLobby(socket, lobbyId);
   });
