@@ -204,6 +204,8 @@ function joinLobby(socket, lobbyId) {
 
 function leaveLobby(socket) {
   const lobbyId = socket.lobbyId;
+  const prevLobbyId = socket.lobbyId;
+  syncLobby(lobbyId);
   if (!lobbyId) return;
 
   delete lobbies[lobbyId].players[socket.id];
@@ -218,6 +220,8 @@ function leaveLobby(socket) {
     delete attacks[lobbyId];
   }
 
+  syncLobby(lobbyId);
+  syncLobby(prevLobbyId);
   syncPublicLobbies();
 }
 
