@@ -152,9 +152,55 @@ io.on("connection", socket => {
   });
 });
 
+// ------------------------
+// Periodischer Lobby-Check
+// ------------------------
+const BROADCAST_RATE = 10;
+setInterval(() => {
+  for (const lobbyId in lobbies) {
+    const lobby = lobbies[lobbyId];
+    const players = Object.values(lobby.players);
+
+    // ------------------------
+    // Spielstart prüfen
+    // ------------------------
+    if (lobby.status === "menu") {
+      if (players.length >= 2 && players.every(p => p.ready)) {
+        lobby.status = "game";
+        lobby.time = 0;
+
+        players.forEach(p => p.ready = false);
+        console.log(`Lobby ${lobbyId} startet jetzt!`);
+      }
+    }
+
+    // ------------------------
+    // Spiel läuft -> Zeit hochzählen
+    // ------------------------
+    if (lobby.status === "game") {
+      lobby.time = (lobby.time || 0) + 1 / BROADCAST_RATE;
+
+      const alivePlayers = players.filter(p => p.health > 0);
+      if (lobby.time >= 120 || alivePlayers.length <= 1) {
+        lobby.status = "menu";
+        lobby.time = 0;
+
+        players.forEach(p => p.ready = false);
+        console.log(`Lobby ${lobbyId} zurück ins Menü`);
+      }
+    }
+
+    // ------------------------
+    // Lobby an Spieler senden
+    // ------------------------
+    io.to(lobbyId).emit("lobby_update", lobby);
+  }
+}, 1000 / BROADCAST_RATE);
+
 // =======================
 // LOBBY FUNKTIONEN
 // =======================
+
 function createAndJoinLobby(socket, name) {
   const lobbyId = generateId();
 
