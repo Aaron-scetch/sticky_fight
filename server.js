@@ -16,7 +16,6 @@ const io = new Server(server, {
 // KONSTANTEN
 // =======================
 const MAX_PLAYERS = 10;
-const DEFAULT_MAP = "standard";
 
 // =======================
 // LISTEN
@@ -71,10 +70,8 @@ io.on("connection", socket => {
     const lobby = lobbies[socket.lobbyId];
     if (!lobby) return;
 
-    const p = publicLobbies[socket.lobbyId].players[socket.id];
-    p.ready = !p.ready;
-
-    syncPublicLobbies();
+    lobby.players[socket.id].ready = !lobby.players[socket.id].ready;
+    syncLobby(socket.lobbyId);
   });
 
   // -----------------------
@@ -165,7 +162,7 @@ function createAndJoinLobby(socket, name) {
     id: lobbyId,
     status: "menu",
     time: 0,
-    map: DEFAULT_MAP,
+    map: "standard",
     players: {}
   };
 
@@ -187,6 +184,7 @@ function joinLobby(socket, lobbyId) {
   lobbies[lobbyId].players[socket.id] = {
     id: socket.id,
     name: socket.playerName,
+    ready: false,
     x: 0,
     y: 0,
     skin: "Stickman",
@@ -197,8 +195,7 @@ function joinLobby(socket, lobbyId) {
 
   publicLobbies[lobbyId].players[socket.id] = {
     id: socket.id,
-    name: socket.playerName,
-    ready: false
+    name: socket.playerName
   };
 
   syncLobby(lobbyId);
