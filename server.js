@@ -168,7 +168,7 @@ setInterval(() => {
       if (players.length >= 2 && players.every(p => p.ready)) {
         lobby.status = "game";
         publicLobbies[lobbyId].status = "game";
-        lobby.time = 0;
+        lobby.time = 120;
 
         players.forEach(p => p.ready = false);
 
@@ -181,13 +181,13 @@ setInterval(() => {
     // Spiel läuft -> Zeit hochzählen
     // ------------------------
     if (lobby.status === "game") {
-      lobby.time = (lobby.time || 0) + 1 / BROADCAST_RATE;
+      lobby.time -= 1 / BROADCAST_RATE;
 
       const alivePlayers = players.filter(p => p.health > 0);
-      if (lobby.time >= 120 || alivePlayers.length <= 1) {
+      if (lobby.time <= 0 || alivePlayers.length <= 1) {
         lobby.status = "menu";
         publicLobbies[lobbyId].status = "menu";
-        lobby.time = 0;
+        lobby.time = 120;
 
         players.forEach(p => p.ready = false);
         syncPublicLobbies();
@@ -212,7 +212,7 @@ function createAndJoinLobby(socket, name) {
   lobbies[lobbyId] = {
     id: lobbyId,
     status: "menu",
-    time: 0,
+    time: 120,
     map: "standard",
     players: {}
   };
