@@ -193,7 +193,7 @@ setInterval(() => {
     // ------------------------
     // Lobby an Spieler senden
     // ------------------------
-    io.to(lobbyId).emit("lobby_update", lobby);
+    syncLobby(lobbyId);
   }
 }, 1000 / BROADCAST_RATE);
 
