@@ -167,9 +167,12 @@ setInterval(() => {
     if (lobby.status === "menu") {
       if (players.length >= 2 && players.every(p => p.ready)) {
         lobby.status = "game";
+        publicLobbies[lobbyId].status = "game";
         lobby.time = 0;
 
         players.forEach(p => p.ready = false);
+
+        syncPublicLobbies();
         console.log(`Lobby ${lobbyId} startet jetzt!`);
       }
     }
@@ -183,9 +186,11 @@ setInterval(() => {
       const alivePlayers = players.filter(p => p.health > 0);
       if (lobby.time >= 120 || alivePlayers.length <= 1) {
         lobby.status = "menu";
+        publicLobbies[lobbyId].status = "menu";
         lobby.time = 0;
 
         players.forEach(p => p.ready = false);
+        syncPublicLobbies();
         console.log(`Lobby ${lobbyId} zurück ins Menü`);
       }
     }
