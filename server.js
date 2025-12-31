@@ -141,7 +141,8 @@ io.on("connection", socket => {
     player.x = data.x;
     player.y = data.y;
     player.health = data.health;
-    player.img = data.img;
+    player.weapon = data.weapon;
+    player.animation = data.animation;
   });
 
   // -----------------------
@@ -239,7 +240,8 @@ function joinLobby(socket, lobbyId) {
     x: 0,
     y: 0,
     skin: "Stickman",
-    img: "Stickman.png",
+    weapon: "Stickman.png",
+    animation: "stand",
     health: 10,
     visible: true
   };
@@ -330,7 +332,8 @@ setInterval(() => {
       const p = lobby.players[pid];
       syncPlayers[pid] = {
         id: p.id,
-        img: p.img,
+        weapon: p.weapon,
+        animation: p.animation,
         x: p.x,
         y: p.y,
         health: p.health
