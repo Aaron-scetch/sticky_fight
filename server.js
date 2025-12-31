@@ -316,7 +316,7 @@ server.listen(10000, () => {
   console.log("Server läuft auf 10000");
 });
 
-const SYNC_RATE = 60;
+const SYNC_RATE = 30;
 
 setInterval(() => {
   for (const lobbyId in lobbies) {
