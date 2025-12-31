@@ -213,7 +213,7 @@ function createAndJoinLobby(socket, name) {
     id: lobbyId,
     status: "menu",
     time: 120,
-    map: "standard",
+    map: "map1",
     players: {}
   };
 
@@ -316,7 +316,7 @@ server.listen(10000, () => {
   console.log("Server läuft auf 10000");
 });
 
-const SYNC_RATE = 20;
+const SYNC_RATE = 60;
 
 setInterval(() => {
   for (const lobbyId in lobbies) {
