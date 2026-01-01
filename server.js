@@ -240,7 +240,7 @@ function joinLobby(socket, lobbyId) {
     x: 0,
     y: 0,
     skin: "Stickman",
-    weapon: "Stickman.png",
+    weapon: "pistol.png",
     animation: "stand",
     health: 10,
     visible: true
