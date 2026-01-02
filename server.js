@@ -140,6 +140,8 @@ io.on("connection", socket => {
 
     player.x = data.x;
     player.y = data.y;
+    player.vx = data.vx;
+    player.vy = data.vy;
     player.health = data.health;
     player.weapon = data.weapon;
     player.animation = data.animation;
@@ -239,6 +241,8 @@ function joinLobby(socket, lobbyId) {
     ready: false,
     x: 0,
     y: 0,
+    vx: 0,
+    vy: 0,
     skin: "Stickman",
     weapon: "pistol.png",
     animation: "stand",
@@ -336,6 +340,8 @@ setInterval(() => {
         animation: p.animation,
         x: p.x,
         y: p.y,
+        vx: p.vx,
+        vy: p.vy,
         health: p.health
       };
     }
